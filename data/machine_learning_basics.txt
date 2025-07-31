@@ -1,0 +1,35 @@
+Machine Learning Fundamentals
+
+Machine Learning is a subset of artificial intelligence that enables computers to learn and make decisions from data without being explicitly programmed.
+
+Types of Machine Learning:
+
+1. Supervised Learning
+- Uses labeled training data
+- Common algorithms: Linear Regression, Decision Trees, Random Forest, SVM
+- Applications: Classification, Regression
+- Examples: Email spam detection, Price prediction
+
+2. Unsupervised Learning
+- Uses unlabeled data to find patterns
+- Common algorithms: K-means clustering, PCA, DBSCAN
+- Applications: Customer segmentation, Anomaly detection
+- Examples: Market basket analysis, Data compression
+
+3. Reinforcement Learning
+- Learns through interaction with environment
+- Uses rewards and penalties
+- Common algorithms: Q-learning, Policy Gradient
+- Applications: Game playing, Robotics, Trading
+
+Key Concepts:
+- Feature Engineering: Selecting and transforming input variables
+- Cross-validation: Technique to assess model performance
+- Overfitting: When model performs well on training but poorly on new data
+- Bias-Variance Tradeoff: Balance between model complexity and generalization
+
+Data Preprocessing:
+- Handle missing values
+- Normalize or standardize features
+- Encode categorical variables
+- Split data into train/validation/test sets

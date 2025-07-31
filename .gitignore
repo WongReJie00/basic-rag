@@ -1,0 +1,5 @@
+/venv
+/models
+/rag_app.log
+/index_storage
+/__pycache__

@@ -1,0 +1,38 @@
+Web Development with Streamlit
+
+Streamlit is an open-source Python library that makes it easy to create and share custom web applications for machine learning and data science projects.
+
+Key Features:
+1. Simple API - Turn data scripts into shareable web apps in minutes
+2. Pure Python - No need to learn HTML, CSS, or JavaScript
+3. Real-time updates - Apps update automatically as you modify the source code
+4. Interactive widgets - Built-in support for sliders, buttons, text inputs
+5. Easy deployment - Deploy to Streamlit Cloud, Heroku, or other platforms
+
+Common Streamlit Components:
+
+Display Elements:
+- st.write() - Display text, data, charts
+- st.title() - Display title
+- st.header() - Display header
+- st.subheader() - Display subheader
+- st.text() - Display fixed-width text
+
+Input Widgets:
+- st.button() - Display a button
+- st.slider() - Display a slider
+- st.selectbox() - Display a select widget
+- st.text_input() - Display a text input widget
+- st.file_uploader() - Display a file uploader
+
+Layout:
+- st.sidebar - Add widgets to sidebar
+- st.columns() - Create columns layout
+- st.container() - Group elements
+- st.expander() - Create collapsible container
+
+Best Practices:
+- Use caching with @st.cache_data for expensive computations
+- Organize code with functions and classes
+- Use session state for maintaining state across reruns
+- Implement error handling for better user experience
