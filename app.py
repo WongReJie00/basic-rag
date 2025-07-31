@@ -1,6 +1,8 @@
 import streamlit as st
 from rag_backend import RAGBackend
 from log import setup_logging, log_info, log_error
+import shutil
+import os
 
 # Configure logging
 logger = setup_logging()
@@ -15,13 +17,83 @@ Guidelines:
 - When appropriate, include code examples or step-by-step instructions
 - Be friendly and professional in your responses"""
 
-# Initialize RAG Backend
-rag = RAGBackend(
-    ollama_url="http://localhost:11434",
-    model_name="qwen2.5:7b-instruct", 
-    embed_model="bge-large",
-    system_prompt=SYSTEM_PROMPT
+# Sidebar configuration
+st.sidebar.header("🔧 Backend Configuration")
+
+# Backend selection
+backend_type = st.sidebar.selectbox(
+    "Select Backend:",
+    [ "ovms", "ollama"],
+    help="Choose between Ollama or OpenVINO Model Server (OVMS)"
 )
+
+# Backend-specific configuration
+if backend_type == "ollama":
+    ollama_url = st.sidebar.text_input(
+        "Ollama URL:", 
+        value="http://localhost:11434",
+        help="URL where Ollama server is running"
+    )
+    model_name = st.sidebar.text_input(
+        "LLM Model:", 
+        value="qwen2.5:7b-instruct",
+        help="Ollama model name for text generation"
+    )
+    embed_model = st.sidebar.text_input(
+        "Embedding Model:", 
+        value="bge-large",
+        help="Ollama model name for embeddings"
+    )
+    
+    # Initialize RAG Backend for Ollama
+    rag = RAGBackend(
+        backend_type="ollama",
+        ollama_url=ollama_url,
+        model_name=model_name,
+        embed_model=embed_model,
+        system_prompt=SYSTEM_PROMPT
+    )
+
+else:  # OVMS
+    ovms_url = st.sidebar.text_input(
+        "OVMS URL:", 
+        value="http://localhost:8000/v3",
+        help="OpenAI-compatible OVMS endpoint URL"
+    )
+    model_name = st.sidebar.text_input(
+        "LLM Model:", 
+        value="Qwen/Qwen2-7B-Instruct",
+        help="OVMS model name for text generation (matches TEXT_GENERATION_SOURCE_MODELS)"
+    )
+    embed_model = st.sidebar.text_input(
+        "Embedding Model:", 
+        value="BAAI/bge-base-en-v1.5",
+        help="OVMS model name for embeddings (matches EMBEDDINGS_SOURCE_MODEL)"
+    )
+    
+    # Initialize RAG Backend for OVMS
+    rag = RAGBackend(
+        backend_type="ovms",
+        ovms_url=ovms_url,
+        model_name=model_name,
+        embed_model=embed_model,
+        system_prompt=SYSTEM_PROMPT
+    )
+    
+    # Show available OVMS models
+    st.sidebar.info("""
+    **Available OVMS Models:**
+    - **Text Generation:** Qwen/Qwen2-7B-Instruct
+    - **Embeddings:** BAAI/bge-base-en-v1.5  
+    - **Rerank:** BAAI/bge-reranker-base
+    """)
+    
+    st.sidebar.warning("""
+    **Note:** Make sure your OVMS container is running:
+    ```
+    cd ovms && docker-compose up -d
+    ```
+    """)
 
 # Cached wrapper for index loading
 @st.cache_resource
@@ -31,32 +103,42 @@ def load_index():
 
 # Streamlit UI
 st.title("🤖 RAG Chat with LlamaIndex")
-st.markdown("Ask questions about the knowledge base (Python, ML, Streamlit)")
+st.markdown("Ask questions about the knowledge base")
 
 config = rag.get_config_info()
 log_info("🚀 Starting RAG Chat application...")
-log_info(f"⚙️ Configuration - LLM: {config['llm_model']}, Embedding: {config['embed_model']}, Ollama URL: {config['ollama_url']}")
+log_info(f"⚙️ Configuration - Backend: {config['backend_type']}, LLM: {config['llm_model']}, Embedding: {config['embed_model']}")
 
-# Check Ollama connectivity
-if not rag.check_ollama_connection():
-    st.error(f"❌ Cannot connect to Ollama at {config['ollama_url']}")
-    st.info("Please make sure Ollama is running by executing: `ollama serve`")
+# Check backend connectivity
+if not rag.check_backend_connection():
+    backend_url = config.get('ollama_url', config.get('ovms_url', 'unknown'))
+    st.error(f"❌ Cannot connect to {config['backend_type'].upper()} at {backend_url}")
+    if config['backend_type'] == 'ollama':
+        st.info("Please make sure Ollama is running by executing: `ollama serve`")
+    else:
+        st.info("Please make sure OVMS container is running and accessible")
     st.stop()
 
 # Check if models are available
 llm_available, embed_available = rag.check_models_available()
 if not llm_available:
     st.error(f"❌ LLM model '{config['llm_model']}' not found")
-    st.info(f"Please pull the model: `ollama pull {config['llm_model']}`")
+    if config['backend_type'] == 'ollama':
+        st.info(f"Please pull the model: `ollama pull {config['llm_model']}`")
+    else:
+        st.info(f"Please ensure the model '{config['llm_model']}' is deployed in OVMS")
     st.stop()
 
 if not embed_available:
     st.error(f"❌ Embedding model '{config['embed_model']}' not found")
-    st.info(f"Please pull the model: `ollama pull {config['embed_model']}`")
+    if config['backend_type'] == 'ollama':
+        st.info(f"Please pull the model: `ollama pull {config['embed_model']}`")
+    else:
+        st.info(f"Please ensure the model '{config['embed_model']}' is deployed in OVMS")
     st.stop()
 
-st.success("✅ Ollama connection and models verified!")
-log_info("✅ Ollama connection and models verified successfully")
+st.success(f"✅ {config['backend_type'].upper()} connection and models verified!")
+log_info(f"✅ {config['backend_type'].upper()} connection and models verified successfully")
 
 # Initialize the index
 log_info("📚 Initializing knowledge base...")
@@ -93,7 +175,7 @@ if prompt := st.chat_input("Ask me anything about the knowledge base..."):
     with st.chat_message("assistant"):
         with st.spinner("Searching knowledge base and generating response..."):
             response = rag.docs_retrieve(prompt, index)
-            
+
             if response:
                 # Display the response
                 response_placeholder = st.empty()
@@ -131,11 +213,16 @@ if prompt := st.chat_input("Ask me anything about the knowledge base..."):
 
 # Sidebar with information
 with st.sidebar:
-    
-    st.header("🔧 Configuration")
+    st.markdown("---")
+    st.header("� Current Configuration")
+    st.code(f"Backend: {config['backend_type'].upper()}")
     st.code(f"LLM Model: {config['llm_model']}")
     st.code(f"Embedding Model: {config['embed_model']}")
-    st.code(f"Ollama URL: {config['ollama_url']}")
+    
+    if config['backend_type'] == 'ollama':
+        st.code(f"Ollama URL: {config['ollama_url']}")
+    else:
+        st.code(f"OVMS URL: {config['ovms_url']}")
     
     with st.expander("📝 System Prompt"):
         st.text_area("Current System Prompt:", value=config['system_prompt'], height=200, disabled=True)
@@ -144,5 +231,38 @@ with st.sidebar:
         log_info("Reloading knowledge base...")
         st.cache_resource.clear()
         st.rerun()
+    
+    if st.button("🗑️ Rebuild Vector Database", type="secondary"):
+        log_info("Rebuilding vector database from scratch...")
+        with st.spinner("Deleting old index and rebuilding from data directory..."):
+            try:
+                # Delete existing index directory to force recreation
+                index_dir = "index_storage"
+                if os.path.exists(index_dir):
+                    shutil.rmtree(index_dir)
+                    log_info(f"Deleted existing index at {index_dir}")
+                
+                # Clear Streamlit cache
+                st.cache_resource.clear()
+                log_info("Cleared Streamlit cache")
+                
+                # Rebuild the index immediately
+                log_info("Creating new vector database...")
+                new_index = rag.load_data_and_create_index()
+                
+                if new_index:
+                    st.success("✅ Vector database rebuilt successfully!")
+                    st.info("The knowledge base has been recreated with fresh embeddings from the `data/` directory.")
+                    log_info("✅ Vector database rebuilt successfully")
+                    
+                    # Force a rerun to refresh the cached index
+                    st.rerun()
+                else:
+                    st.error("❌ Failed to rebuild vector database")
+                    log_error("Failed to rebuild vector database")
+                
+            except Exception as e:
+                log_error(f"Error rebuilding vector database: {e}")
+                st.error(f"Error rebuilding vector database: {e}")
     
     

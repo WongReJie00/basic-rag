@@ -1,0 +1,61 @@
+services:
+  model_downloader_converter:
+    image: python:3.10-slim
+    container_name: model_downloader_converter
+    volumes:
+      - ./workspace:/workspace
+    working_dir: /workspace
+    environment:
+      UID: $UID
+      GID: $GID
+      EMBEDDINGS_SOURCE_MODEL: "BAAI/bge-base-en-v1.5"
+      RERANK_SOURCE_MODEL: "BAAI/bge-reranker-base"
+      TEXT_GENERATION_SOURCE_MODELS: "Qwen/Qwen2-7B-Instruct"
+      HTTP_PROXY: "http://proxy-dmz.intel.com:912"
+      HTTPS_PROXY: "http://proxy-dmz.intel.com:912"
+      http_proxy: "http://proxy-dmz.intel.com:912"
+      https_proxy: "http://proxy-dmz.intel.com:912"
+    command: >
+      /bin/bash -c "
+      set -e &&
+      apt-get update &&
+      apt-get install -y wget git &&
+      python3 -m venv .venv --prompt ovms-llm &&
+      source .venv/bin/activate &&
+      export EMBEDDINGS_SOURCE_MODEL=$$EMBEDDINGS_SOURCE_MODEL &&
+      export RERANK_SOURCE_MODEL=$$RERANK_SOURCE_MODEL &&
+      export TEXT_GENERATION_SOURCE_MODELS=$$TEXT_GENERATION_SOURCE_MODELS &&
+      if [ ! -f requirements.txt ]; then
+        wget https://raw.githubusercontent.com/openvinotoolkit/model_server/refs/heads/releases/2024/5/demos/common/export_models/requirements.txt
+      fi &&
+      pip install -r requirements.txt &&
+      if [ ! -f export_model.py ]; then
+        wget https://raw.githubusercontent.com/openvinotoolkit/model_server/refs/heads/releases/2024/5/demos/common/export_models/export_model.py
+      fi &&
+      mkdir -p models &&
+      if [ ! -d models/$$EMBEDDINGS_SOURCE_MODEL ]; then
+        python export_model.py embeddings --source_model $$EMBEDDINGS_SOURCE_MODEL --weight-format int8 --config_file_path models/config_rag.json
+      fi &&
+      if [ ! -d models/$$RERANK_SOURCE_MODEL ]; then
+        python export_model.py rerank --source_model $$RERANK_SOURCE_MODEL --weight-format int8 --config_file_path models/config_rag.json
+      fi &&
+      IFS=',' read -ra MODELS <<< \"$$TEXT_GENERATION_SOURCE_MODELS\" &&
+      for MODEL in \$${MODELS[@]}; do
+        if [ ! -d models/$$MODEL ]; then
+          python3 export_model.py text_generation --source_model $$MODEL --weight-format int8 --kv_cache_precision u8 --config_file_path models/config_rag.json --model_repository_path models
+        fi
+      done &&
+      chown -R $$UID:$$GID /workspace
+      "
+  ovms:
+    image: openvino/model_server:latest
+    container_name: ovms
+    volumes:
+      - ./workspace:/workspace
+    working_dir: /workspace
+    ports:
+      - "8000:8000"
+    depends_on:
+      model_downloader_converter:
+        condition: service_completed_successfully
+    command: ["--rest_port", "8000", "--config_path", "/workspace/models/config_rag.json"]

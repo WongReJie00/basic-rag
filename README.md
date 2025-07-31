@@ -9,7 +9,7 @@ A RAG (Retrieval-Augmented Generation) chat application using LlamaIndex, Ollama
 2. **Ollama** installed and running
 3. Required models pulled in Ollama
 
-## Quick Start
+## Quick Start for Ollama
 
 ### 1. Install Ollama
 
@@ -30,6 +30,11 @@ ollama pull qwen2.5:7b-instruct
 # Pull the embedding model
 ollama pull bge-large
 ```
+
+
+## Quick Start for OVMS
+Refer to README.md in the `ovms` directory for detailed instructions on setting up OVMS to host models.
+
 
 ### 3. Setup Python Environment
 
