@@ -5,11 +5,22 @@ from log import setup_logging, log_info, log_error
 # Configure logging
 logger = setup_logging()
 
+# Define system prompt for RAG
+SYSTEM_PROMPT = """You are a helpful AI assistant specializing in answering questions based on the provided knowledge base.
+
+Guidelines:
+- Answer questions accurately based only on the provided context
+- If information is not in the context, clearly state that you don't have that information
+- Provide clear, concise, and well-structured responses
+- When appropriate, include code examples or step-by-step instructions
+- Be friendly and professional in your responses"""
+
 # Initialize RAG Backend
 rag = RAGBackend(
     ollama_url="http://localhost:11434",
     model_name="qwen2.5:7b-instruct", 
-    embed_model="bge-large"
+    embed_model="bge-large",
+    system_prompt=SYSTEM_PROMPT
 )
 
 # Cached wrapper for index loading
@@ -125,6 +136,9 @@ with st.sidebar:
     st.code(f"LLM Model: {config['llm_model']}")
     st.code(f"Embedding Model: {config['embed_model']}")
     st.code(f"Ollama URL: {config['ollama_url']}")
+    
+    with st.expander("📝 System Prompt"):
+        st.text_area("Current System Prompt:", value=config['system_prompt'], height=200, disabled=True)
     
     if st.button("🔄 Reload Knowledge Base"):
         log_info("Reloading knowledge base...")

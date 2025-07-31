@@ -12,10 +12,12 @@ class RAGBackend:
     
     def __init__(self, ollama_url="http://localhost:11434", 
                  model_name="qwen2.5:7b-instruct", 
-                 embed_model="bge-large"):
+                 embed_model="bge-large",
+                 system_prompt=None):
         self.ollama_url = ollama_url
         self.model_name = model_name
         self.embed_model = embed_model
+        self.system_prompt = system_prompt
         self._configure_settings()
     
     def _configure_settings(self):
@@ -23,7 +25,8 @@ class RAGBackend:
         Settings.llm = Ollama(
             model=self.model_name, 
             base_url=self.ollama_url,
-            request_timeout=120.0  # 2 minutes timeout
+            request_timeout=120.0,  # 2 minutes timeout
+            system_prompt=self.system_prompt
         )
         Settings.embed_model = OllamaEmbedding(
             model_name=self.embed_model, 
@@ -151,5 +154,6 @@ class RAGBackend:
         return {
             "llm_model": self.model_name,
             "embed_model": self.embed_model,
-            "ollama_url": self.ollama_url
+            "ollama_url": self.ollama_url,
+            "system_prompt": self.system_prompt
         }
