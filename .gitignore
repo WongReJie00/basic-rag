@@ -1,4 +1,8 @@
 /venv
+/ovms-baremetal/__pycache__
+/ovms-baremetal/.venv
+/ovms-baremetal/ovms
+/ovms-baremetal/models
 /models
 /rag_app.log
 /index_storage
