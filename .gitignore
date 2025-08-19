@@ -1,4 +1,10 @@
 /venv
+/streamlit-env
+/ovms-baremetal/__pycache__
+/ovms-baremetal/.venv
+/ovms-baremetal/ovms
+/ovms-baremetal/models
+/ovms-baremetal/workspace
 /models
 /rag_app.log
 /index_storage
